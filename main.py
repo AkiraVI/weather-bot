@@ -310,8 +310,8 @@ async def handle_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = TEXTS[lang]
     city = update.message.text.strip()
 
-    # ✅ Check language button FIRST — before anything else
-    if city in ["🌐 Сменить язык", "🌐 Змінити мову"]:
+# ✅ Check language button FIRST — before anything else
+    if city in ["🌐 Сменить язык", "🌐 Змінити мову", "🇷🇺 Русский", "🇺🇦 Українська"]:
         keyboard = [["🇷🇺 Русский", "🇺🇦 Українська"]]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
         await update.message.reply_text(
