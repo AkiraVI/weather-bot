@@ -310,6 +310,16 @@ async def handle_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = TEXTS[lang]
     city = update.message.text.strip()
 
+    # Check if user pressed language switch button
+    if city in ["🌐 Сменить язык", "🌐 Змінити мову"]:
+        keyboard = [["🇷🇺 Русский", "🇺🇦 Українська"]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        await update.message.reply_text(
+            "🌐 Выбери язык / Оберіть мову:",
+            reply_markup=reply_markup
+        )
+        return CHOOSING_LANG
+
     # Кнопки клавиатуры
     keyboard_buttons = [btn for row in t["keyboard"] for btn in row]
     if city in keyboard_buttons:
@@ -317,14 +327,12 @@ async def handle_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CHOOSING_CITY
 
     await update.message.reply_text(t["searching"].format(city), parse_mode="Markdown")
-
     data = get_weather(city, t["api_lang"])
     if data:
         msg = format_weather_message(data, lang)
         await update.message.reply_text(msg, parse_mode="Markdown")
     else:
         await update.message.reply_text(t["not_found"].format(city), parse_mode="Markdown")
-
     return CHOOSING_CITY
 
 
