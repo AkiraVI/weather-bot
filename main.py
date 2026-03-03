@@ -512,7 +512,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ── City search or forecast ─────────────────────────
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
-
+    print(f"DEBUG state: {user_state.get(user_id)}, text: {text}")
     if user_state.get(user_id) == "choosing_forecast_city":
         user_state[user_id] = "choosing_city"
         forecast_data = get_forecast(text, t["api_lang"])
