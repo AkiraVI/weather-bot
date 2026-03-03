@@ -322,10 +322,23 @@ async def handle_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Skip other keyboard buttons
     if city in ["📍 Моё местоположение", "📍 Моє місцезнаходження"]:
-        await update.message.reply_text(
-            "📍 Нажми кнопку прикрепить геолокацию / Натисни кнопку прикріпити геолокацію 👇",
-            parse_mode="Markdown"
-        )
+        t = TEXTS[lang]
+        if lang == "ru":
+            await update.message.reply_text(
+                "📍 Чтобы поделиться локацией:\n\n"
+                "1️⃣ Нажми на скрепку 📎 внизу\n"
+                "2️⃣ Выбери *Геопозиция*\n"
+                "3️⃣ Отправь своё местоположение",
+                parse_mode="Markdown"
+            )
+        else:
+            await update.message.reply_text(
+                "📍 Щоб поділитися локацією:\n\n"
+                "1️⃣ Натисни на скріпку 📎 внизу\n"
+                "2️⃣ Вибери *Геопозиція*\n"
+                "3️⃣ Відправ своє місцезнаходження",
+                parse_mode="Markdown"
+            )
         return CHOOSING_CITY
 
     # Search weather
