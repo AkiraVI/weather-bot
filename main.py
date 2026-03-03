@@ -424,7 +424,7 @@ def main():
     print("🤖 Погодный бот запускается...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-conv_handler = ConversationHandler(
+    conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler("start", start),
             CommandHandler("language", language_command),
@@ -456,6 +456,10 @@ conv_handler = ConversationHandler(
 
     print("✅ Бот работает! Нажми Ctrl+C для остановки.")
     app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
