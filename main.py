@@ -366,21 +366,21 @@ def get_forecast(city: str, lang: str):
 def format_forecast_message(data: dict, lang: str, t: dict) -> str:
     city = data["city"]["name"]
     country = data["city"]["country"]
-    
+
     days = {}
     for item in data["list"]:
         date = item["dt_txt"].split(" ")[0]
         if date not in days:
             days[date] = []
         days[date].append(item)
-    
+
     sky_emojis = {
         "01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
         "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"
     }
-    
+
     msg = f"{t['forecast_title']} *{city}, {country}*\n━━━━━━━━━━━━━━━━━━\n"
-    
+
     for i, (date, items) in enumerate(days.items()):
         if i >= 5:
             break
@@ -389,18 +389,17 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         icons = [item["weather"][0]["icon"] for item in items]
         temp_min = min(temps)
         temp_max = max(temps)
-        description = descriptions[len(descriptions)//2].capitalize()
-        icon = icons[len(icons)//2]
+        description = descriptions[len(descriptions) // 2].capitalize()
+        icon = icons[len(icons) // 2]
         sky = sky_emojis.get(icon[:2], "🌡️")
-        
-        from datetime import datetime
+
         day = datetime.strptime(date, "%Y-%m-%d")
         day_name = day.strftime("%A, %d %b")
-        
+
         msg += f"\n{sky} *{day_name}*\n"
         msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C — {description}\n"
-        
-if lang == "ru":
+
+        if lang == "ru":
             if temp_max <= 0:
                 outfit = "🧥 Тёплое пальто, перчатки, шапка"
             elif temp_max <= 8:
@@ -417,7 +416,7 @@ if lang == "ru":
                 outfit += " + ☔ зонт"
             if any("снег" in d.lower() or "snow" in d.lower() for d in descriptions):
                 outfit += " + ❄️ сапоги"
-            elif lang == "uk":
+        elif lang == "uk":
             if temp_max <= 0:
                 outfit = "🧥 Тепле пальто, рукавиці, шапка"
             elif temp_max <= 8:
@@ -454,7 +453,7 @@ if lang == "ru":
 
         msg += f"  👗 {outfit}\n"
 
-    msg += f"\n━━━━━━━━━━━━━━━━━━"
+    msg += "\n━━━━━━━━━━━━━━━━━━"
     return msg
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
