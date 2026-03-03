@@ -400,24 +400,57 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         msg += f"\n{sky} *{day_name}*\n"
         msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C — {description}\n"
         
-        if temp_max <= 0:
-            outfit = "🧥 Heavy winter coat, gloves, warm hat"
-        elif temp_max <= 8:
-            outfit = "🧥 Winter jacket, scarf, gloves"
-        elif temp_max <= 15:
-            outfit = "🧣 Medium jacket or hoodie"
-        elif temp_max <= 20:
-            outfit = "👕 Light jacket or cardigan"
-        elif temp_max <= 26:
-            outfit = "👕 T-shirt and jeans"
+if lang == "ru":
+            if temp_max <= 0:
+                outfit = "🧥 Тёплое пальто, перчатки, шапка"
+            elif temp_max <= 8:
+                outfit = "🧥 Зимняя куртка, шарф, перчатки"
+            elif temp_max <= 15:
+                outfit = "🧣 Куртка или толстовка"
+            elif temp_max <= 20:
+                outfit = "👕 Лёгкая куртка или кардиган"
+            elif temp_max <= 26:
+                outfit = "👕 Футболка и джинсы"
+            else:
+                outfit = "🩳 Лёгкая одежда, шорты или платье"
+            if any("дождь" in d.lower() or "rain" in d.lower() for d in descriptions):
+                outfit += " + ☔ зонт"
+            if any("снег" in d.lower() or "snow" in d.lower() for d in descriptions):
+                outfit += " + ❄️ сапоги"
+        elif lang == "uk":
+            if temp_max <= 0:
+                outfit = "🧥 Тепле пальто, рукавиці, шапка"
+            elif temp_max <= 8:
+                outfit = "🧥 Зимова куртка, шарф, рукавиці"
+            elif temp_max <= 15:
+                outfit = "🧣 Куртка або худі"
+            elif temp_max <= 20:
+                outfit = "👕 Легка куртка або кардиган"
+            elif temp_max <= 26:
+                outfit = "👕 Футболка та джинси"
+            else:
+                outfit = "🩳 Легкий одяг, шорти або сукня"
+            if any("дощ" in d.lower() or "rain" in d.lower() for d in descriptions):
+                outfit += " + ☔ парасолька"
+            if any("сніг" in d.lower() or "snow" in d.lower() for d in descriptions):
+                outfit += " + ❄️ чоботи"
         else:
-            outfit = "🩳 Light clothes, shorts or dress"
-        
-        if any("rain" in d.lower() or "дождь" in d.lower() or "дощ" in d.lower() for d in descriptions):
-            outfit += " + ☔ umbrella"
-        
-        if any("snow" in d.lower() or "снег" in d.lower() or "сніг" in d.lower() for d in descriptions):
-            outfit += " + ❄️ boots"
+            if temp_max <= 0:
+                outfit = "🧥 Heavy winter coat, gloves, warm hat"
+            elif temp_max <= 8:
+                outfit = "🧥 Winter jacket, scarf, gloves"
+            elif temp_max <= 15:
+                outfit = "🧣 Medium jacket or hoodie"
+            elif temp_max <= 20:
+                outfit = "👕 Light jacket or cardigan"
+            elif temp_max <= 26:
+                outfit = "👕 T-shirt and jeans"
+            else:
+                outfit = "🩳 Light clothes, shorts or dress"
+            if any("rain" in d.lower() for d in descriptions):
+                outfit += " + ☔ umbrella"
+            if any("snow" in d.lower() for d in descriptions):
+                outfit += " + ❄️ boots"
 
         msg += f"  👗 {outfit}\n"
 
