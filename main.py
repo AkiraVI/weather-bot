@@ -785,7 +785,12 @@ def main():
     app.add_handler(CommandHandler("notify", notify_command))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    scheduler.start()
+
+    async def post_init(application):
+        scheduler.start()
+        print("✅ Scheduler started!")
+
+    app.post_init = post_init
     print("✅ Бот работает!")
     app.run_polling()
 
