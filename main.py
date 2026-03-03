@@ -8,9 +8,11 @@ TELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
 WEATHER_API_KEY = "3813f517bca011b6230db64ff9907de5"
 
 WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
+FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
+AIR_URL = "https://api.openweathermap.org/data/2.5/air_pollution"
 
 user_languages = {}
-user_state = {}  # "choosing_lang" or "choosing_city"
+user_state = {}
 
 TEXTS = {
     "ru": {
@@ -48,16 +50,18 @@ TEXTS = {
         "weather_title": "Погода в",
         "temperature": "🌡️ Температура",
         "feels_like": "ощущается как",
+        "today_range": "Сегодня",
         "condition": "🌈 Состояние",
         "humidity": "💧 Влажность",
         "wind": "💨 Ветер",
+        "air_quality": "🌿 Качество воздуха",
+        "air_levels": ["Отличное", "Хорошее", "Умеренное", "Плохое", "Очень плохое"],
         "outfit_title": "👗 *Что надеть сегодня:*",
         "footer": "_Напиши другой город, чтобы проверить погоду там!_",
         "forecast_btn": "📅 Прогноз на 5 дней",
         "forecast_title": "📅 Прогноз на 5 дней для",
         "forecast_ask": "🏙️ Для какого города показать прогноз?\nНапиши название города:",
         "api_lang": "ru",
-        "today_range": "Сегодня",
         "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"], ["📅 Прогноз на 5 дней"]],
         "clothing": {
             "very_cold_1": "🧥 Тёплое зимнее пальто, термобельё, шерстяной свитер",
@@ -120,16 +124,18 @@ TEXTS = {
         "weather_title": "Погода в",
         "temperature": "🌡️ Температура",
         "feels_like": "відчувається як",
+        "today_range": "Сьогодні",
         "condition": "🌈 Стан",
         "humidity": "💧 Вологість",
         "wind": "💨 Вітер",
+        "air_quality": "🌿 Якість повітря",
+        "air_levels": ["Відмінна", "Добра", "Помірна", "Погана", "Дуже погана"],
         "outfit_title": "👗 *Що вдягнути сьогодні:*",
         "footer": "_Напиши інше місто, щоб перевірити погоду там!_",
         "forecast_btn": "📅 Прогноз на 5 днів",
         "forecast_title": "📅 Прогноз на 5 днів для",
         "forecast_ask": "🏙️ Для якого міста показати прогноз?\nНапиши назву міста:",
         "api_lang": "uk",
-        "today_range": "Сьогодні",
         "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"], ["📅 Прогноз на 5 днів"]],
         "clothing": {
             "very_cold_1": "🧥 Тепле зимове пальто, термобілизна, вовняний светр",
@@ -191,12 +197,14 @@ TEXTS = {
         "weather_title": "Weather in",
         "temperature": "🌡️ Temperature",
         "feels_like": "feels like",
+        "today_range": "Today",
         "condition": "🌈 Condition",
         "humidity": "💧 Humidity",
         "wind": "💨 Wind",
+        "air_quality": "🌿 Air Quality",
+        "air_levels": ["Excellent", "Good", "Moderate", "Poor", "Very Poor"],
         "outfit_title": "👗 *What to wear today:*",
         "footer": "_Type another city to check the weather there!_",
-        "today_range": "Today",
         "forecast_btn": "📅 5-Day Forecast",
         "forecast_title": "📅 5-Day Forecast for",
         "forecast_ask": "🏙️ Which city do you want the forecast for?\nType a city name:",
@@ -233,24 +241,36 @@ TEXTS = {
 LANG_BUTTONS = ["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]
 LOCATION_BUTTONS = ["📍 Моё местоположение", "📍 Моє місцезнаходження", "📍 My Location"]
 SWITCH_BUTTONS = ["🌐 Сменить язык", "🌐 Змінити мову", "🌐 Change Language"]
+FORECAST_BUTTONS = ["📅 Прогноз на 5 дней", "📅 Прогноз на 5 днів", "📅 5-Day Forecast"]
 
 
-def get_lang(user_id: int) -> str:
+def get_lang(user_id):
     return user_languages.get(user_id, "en")
 
 
-def get_weather(city: str, lang: str):
-    # Current weather
+def get_air_quality(lat, lon):
+    response = requests.get(AIR_URL, params={"lat": lat, "lon": lon, "appid": WEATHER_API_KEY})
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+
+def get_aqi_label(aqi, t):
+    icons = ["🟢", "🟢", "🟡", "🟠", "🔴"]
+    levels = t["air_levels"]
+    if 1 <= aqi <= 5:
+        return f"{icons[aqi-1]} {levels[aqi-1]}"
+    return "N/A"
+
+
+def get_weather(city, lang):
     params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang}
     response = requests.get(WEATHER_URL, params=params)
     if response.status_code != 200:
         return None
     data = response.json()
-
-    # Daily min/max from forecast
-    forecast_url = "https://api.openweathermap.org/data/2.5/forecast"
-    params["cnt"] = 8  # next 24 hours (8 x 3h intervals)
-    forecast = requests.get(forecast_url, params=params)
+    forecast_params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang, "cnt": 8}
+    forecast = requests.get(FORECAST_URL, params=forecast_params)
     if forecast.status_code == 200:
         temps = [item["main"]["temp"] for item in forecast.json()["list"]]
         data["temp_min"] = min(temps)
@@ -258,8 +278,20 @@ def get_weather(city: str, lang: str):
     else:
         data["temp_min"] = data["main"]["temp_min"]
         data["temp_max"] = data["main"]["temp_max"]
-
+    lat = data["coord"]["lat"]
+    lon = data["coord"]["lon"]
+    air = get_air_quality(lat, lon)
+    if air:
+        data["aqi"] = air["list"][0]["main"]["aqi"]
     return data
+
+
+def get_forecast(city, lang):
+    params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang}
+    response = requests.get(FORECAST_URL, params=params)
+    if response.status_code == 200:
+        return response.json()
+    return None
 
 
 def get_clothing_advice(temp, weather_desc, wind_speed, t):
@@ -301,14 +333,16 @@ def format_weather_message(data, lang):
                   "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"}
     sky = sky_emojis.get(icon[:2], "🌡️")
     clothing = get_clothing_advice(data.get("temp_max", temp), description, wind_speed, t)
+    aqi_text = get_aqi_label(data.get("aqi", 0), t)
     return (
         f"{sky} *{t['weather_title']} {city}, {country}*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"{t['temperature']}: *{temp:.1f}°C* ({t['feels_like']} {feels_like:.1f}°C)\n"
-        f"📊 {t['today_range']}: 🔵 {data['temp_min']:.1f}°C — 🔴 {data['temp_max']:.1f}°C\n"
+        f"📊 {t['today_range']}: 🔵 {data.get('temp_min', temp):.1f}°C — 🔴 {data.get('temp_max', temp):.1f}°C\n"
         f"{t['condition']}: {description}\n"
         f"{t['humidity']}: {humidity}%\n"
-        f"{t['wind']}: {wind_speed} м/с\n\n"
+        f"{t['wind']}: {wind_speed} м/с\n"
+        f"{t['air_quality']}: {aqi_text}\n\n"
         f"{t['outfit_title']}\n"
         f"{clothing}\n"
         f"━━━━━━━━━━━━━━━━━━\n"
@@ -316,72 +350,18 @@ def format_weather_message(data, lang):
     )
 
 
-def show_lang_keyboard():
-    keyboard = [["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_state[update.message.from_user.id] = "choosing_lang"
-    await update.message.reply_text(
-        "🌐 Выбери язык / Оберіть мову / Choose language:",
-        reply_markup=show_lang_keyboard()
-    )
-
-
-async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_state[update.message.from_user.id] = "choosing_lang"
-    await update.message.reply_text(
-        "🌐 Выбери язык / Оберіть мову / Choose language:",
-        reply_markup=show_lang_keyboard()
-    )
-
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(update.message.from_user.id)
-    await update.message.reply_text(TEXTS[lang]["help"], parse_mode="Markdown")
-
-
-async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    lang = get_lang(user_id)
-    t = TEXTS[lang]
-    location = update.message.location
-    params = {"lat": location.latitude, "lon": location.longitude,
-              "appid": WEATHER_API_KEY, "units": "metric", "lang": t["api_lang"]}
-    response = requests.get(WEATHER_URL, params=params)
-    if response.status_code == 200:
-        await update.message.reply_text(format_weather_message(response.json(), lang), parse_mode="Markdown")
-    else:
-        await update.message.reply_text(t["location_error"])
-FORECAST_BUTTONS = ["📅 Прогноз на 5 дней", "📅 Прогноз на 5 днів", "📅 5-Day Forecast"]
-
-def get_forecast(city: str, lang: str):
-    url = "https://api.openweathermap.org/data/2.5/forecast"
-    params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang}
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        return response.json()
-    return None
-
-def format_forecast_message(data: dict, lang: str, t: dict) -> str:
+def format_forecast_message(data, lang, t):
     city = data["city"]["name"]
     country = data["city"]["country"]
-
     days = {}
     for item in data["list"]:
         date = item["dt_txt"].split(" ")[0]
         if date not in days:
             days[date] = []
         days[date].append(item)
-
-    sky_emojis = {
-        "01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
-        "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"
-    }
-
+    sky_emojis = {"01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
+                  "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"}
     msg = f"{t['forecast_title']} *{city}, {country}*\n━━━━━━━━━━━━━━━━━━\n"
-
     for i, (date, items) in enumerate(days.items()):
         if i >= 5:
             break
@@ -393,23 +373,19 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         description = descriptions[len(descriptions) // 2].capitalize()
         icon = icons[len(icons) // 2]
         sky = sky_emojis.get(icon[:2], "🌡️")
-
-        day = datetime.strptime(date, "%Y-%m-%d")
         days_ru = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
         days_uk = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"]
         months_ru = ["", "Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
         months_uk = ["", "Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"]
-
+        day = datetime.strptime(date, "%Y-%m-%d")
         if lang == "ru":
             day_name = f"{days_ru[day.weekday()]}, {day.day:02d} {months_ru[day.month]}"
         elif lang == "uk":
             day_name = f"{days_uk[day.weekday()]}, {day.day:02d} {months_uk[day.month]}"
         else:
             day_name = day.strftime("%A, %d %b")
-
         msg += f"\n{sky} *{day_name}*\n"
         msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C — {description}\n"
-
         if lang == "ru":
             if temp_max <= 0:
                 outfit = "🧥 Тёплое пальто, перчатки, шапка"
@@ -461,18 +437,62 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
                 outfit += " + ☔ umbrella"
             if any("snow" in d.lower() for d in descriptions):
                 outfit += " + ❄️ boots"
-
         msg += f"  👗 {outfit}\n"
-
     msg += "\n━━━━━━━━━━━━━━━━━━"
     return msg
+
+
+def show_lang_keyboard():
+    keyboard = [["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_state[update.message.from_user.id] = "choosing_lang"
+    await update.message.reply_text(
+        "🌐 Выбери язык / Оберіть мову / Choose language:",
+        reply_markup=show_lang_keyboard()
+    )
+
+
+async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_state[update.message.from_user.id] = "choosing_lang"
+    await update.message.reply_text(
+        "🌐 Выбери язык / Оберіть мову / Choose language:",
+        reply_markup=show_lang_keyboard()
+    )
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(update.message.from_user.id)
+    await update.message.reply_text(TEXTS[lang]["help"], parse_mode="Markdown")
+
+
+async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    lang = get_lang(user_id)
+    t = TEXTS[lang]
+    location = update.message.location
+    params = {"lat": location.latitude, "lon": location.longitude,
+              "appid": WEATHER_API_KEY, "units": "metric", "lang": t["api_lang"]}
+    response = requests.get(WEATHER_URL, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        data["temp_min"] = data["main"]["temp_min"]
+        data["temp_max"] = data["main"]["temp_max"]
+        air = get_air_quality(location.latitude, location.longitude)
+        if air:
+            data["aqi"] = air["list"][0]["main"]["aqi"]
+        await update.message.reply_text(format_weather_message(data, lang), parse_mode="Markdown")
+    else:
+        await update.message.reply_text(t["location_error"])
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text.strip()
     state = user_state.get(user_id, "choosing_city")
 
-    # ── Language selection ──────────────────────────────
     if text in LANG_BUTTONS:
         if text == "🇺🇦 Українська":
             user_languages[user_id] = "uk"
@@ -480,17 +500,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == "🇬🇧 English":
             user_languages[user_id] = "en"
             lang = "en"
-        elif text == "🇷🇺 Русский":
+        else:
             user_languages[user_id] = "ru"
             lang = "ru"
-        else:
-            # Still waiting for language selection
-            await update.message.reply_text(
-                "🌐 Выбери язык / Оберіть мову / Choose language:",
-                reply_markup=show_lang_keyboard()
-            )
-            return
-
         user_state[user_id] = "choosing_city"
         t = TEXTS[lang]
         reply_markup = ReplyKeyboardMarkup(t["keyboard"], resize_keyboard=True)
@@ -498,16 +510,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t["welcome"], parse_mode="Markdown")
         return
 
+    if state == "choosing_lang":
+        await update.message.reply_text(
+            "🌐 Выбери язык / Оберіть мову / Choose language:",
+            reply_markup=show_lang_keyboard()
+        )
+        return
+
     lang = get_lang(user_id)
     t = TEXTS[lang]
 
-    # ── Forecast button ─────────────────────────────────
-    if text in FORECAST_BUTTONS:
-        user_state[user_id] = "choosing_forecast_city"
-        await update.message.reply_text(t["forecast_ask"], parse_mode="Markdown")
-        return
-        
-    # ── Switch language button ──────────────────────────
     if text in SWITCH_BUTTONS:
         user_state[user_id] = "choosing_lang"
         await update.message.reply_text(
@@ -516,14 +528,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ── Location button ─────────────────────────────────
     if text in LOCATION_BUTTONS:
         await update.message.reply_text(t["location_instructions"], parse_mode="Markdown")
         return
 
-    # ── City search or forecast ─────────────────────────
+    if text in FORECAST_BUTTONS:
+        user_state[user_id] = "choosing_forecast_city"
+        await update.message.reply_text(t["forecast_ask"], parse_mode="Markdown")
+        return
+
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
-    print(f"DEBUG state: {user_state.get(user_id)}, text: {text}")
+
     if user_state.get(user_id) == "choosing_forecast_city":
         user_state[user_id] = "choosing_city"
         forecast_data = get_forecast(text, t["api_lang"])
@@ -543,13 +558,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     print("🤖 Бот запускается...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
     print("✅ Бот работает!")
     app.run_polling()
 
