@@ -430,10 +430,9 @@ def main():
             CommandHandler("language", language_command),
             MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
         ],
-        states={
+states={
             CHOOSING_LANG: [
                 MessageHandler(filters.Regex("^(🇷🇺 Русский|🇺🇦 Українська|🇬🇧 English)$"), set_language),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
             ],
             CHOOSING_CITY: [
                 MessageHandler(filters.LOCATION, handle_location),
