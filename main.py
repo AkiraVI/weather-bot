@@ -3,7 +3,7 @@ import requests
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-TETELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
+TELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
 WEATHER_API_KEY = "3813f517bca011b6230db64ff9907de5"
 
 WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
