@@ -424,11 +424,16 @@ def main():
     print("🤖 Погодный бот запускается...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+conv_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("start", start),
+            CommandHandler("language", language_command),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
+        ],
         states={
             CHOOSING_LANG: [
-                MessageHandler(filters.Regex("^(🇷🇺 Русский|🇺🇦 Українська|🇬🇧 English)$"), set_language)
+                MessageHandler(filters.Regex("^(🇷🇺 Русский|🇺🇦 Українська|🇬🇧 English)$"), set_language),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
             ],
             CHOOSING_CITY: [
                 MessageHandler(filters.LOCATION, handle_location),
@@ -439,6 +444,8 @@ def main():
             CommandHandler("start", start),
             CommandHandler("language", language_command),
             CommandHandler("help", help_command),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
+            MessageHandler(filters.LOCATION, handle_location),
         ],
         allow_reentry=True
     )
