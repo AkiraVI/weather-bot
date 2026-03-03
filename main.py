@@ -399,9 +399,32 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         day = datetime.strptime(date, "%Y-%m-%d")
         day_name = day.strftime("%A, %d %b")
         
-        msg += f"\n{sky} *{day_name}*\n"
-        msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C\n"
-        msg += f"  {description}\n"
+               msg += f"\n{sky} *{day_name}*\n"
+        msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C — {description}\n"
+        
+        # Outfit recommendation based on max temp
+        if temp_max <= 0:
+            outfit = "🧥 Heavy winter coat, gloves, warm hat"
+        elif temp_max <= 8:
+            outfit = "🧥 Winter jacket, scarf, gloves"
+        elif temp_max <= 15:
+            outfit = "🧣 Medium jacket or hoodie"
+        elif temp_max <= 20:
+            outfit = "👕 Light jacket or cardigan"
+        elif temp_max <= 26:
+            outfit = "👕 T-shirt and jeans"
+        else:
+            outfit = "🩳 Light clothes, shorts or dress"
+        
+        # Rain check
+        if any("rain" in d.lower() or "дождь" in d.lower() or "дощ" in d.lower() for d in descriptions):
+            outfit += " + ☔ umbrella"
+        
+        # Snow check
+        if any("snow" in d.lower() or "снег" in d.lower() or "сніг" in d.lower() for d in descriptions):
+            outfit += " + ❄️ boots"
+
+        msg += f"  👗 {outfit}\n"
     
     msg += f"\n━━━━━━━━━━━━━━━━━━"
     return msg
