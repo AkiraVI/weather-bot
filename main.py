@@ -412,6 +412,8 @@ def format_weather_message(data, lang):
     sky_emojis = {"01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
                   "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"}
     sky = sky_emojis.get(icon[:2], "🌡️")
+    sunrise = datetime.fromtimestamp(data["sys"]["sunrise"]).strftime("%H:%M")
+    sunset = datetime.fromtimestamp(data["sys"]["sunset"]).strftime("%H:%M")
     clothing = get_clothing_advice(data.get("temp_max", temp), description, wind_speed, t)
     aqi_text = get_aqi_label(data.get("aqi", 0), t)
     return (
@@ -422,7 +424,8 @@ def format_weather_message(data, lang):
         f"{t['condition']}: {description}\n"
         f"{t['humidity']}: {humidity}%\n"
         f"{t['wind']}: {wind_speed} м/с\n"
-        f"{t['air_quality']}: {aqi_text}\n\n"
+        f"{t['air_quality']}: {aqi_text}\n"
+        f"{t['sunrise']}: {sunrise} — {t['sunset']}: {sunset}\n\n"
         f"{t['outfit_title']}\n"
         f"{clothing}\n"
         f"━━━━━━━━━━━━━━━━━━\n"
