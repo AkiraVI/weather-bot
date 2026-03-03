@@ -353,7 +353,58 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(format_weather_message(response.json(), lang), parse_mode="Markdown")
     else:
         await update.message.reply_text(t["location_error"])
+FORECAST_BUTTONS = ["📅 Прогноз на 5 дней", "📅 Прогноз на 5 днів", "📅 5-Day Forecast"]
 
+def get_forecast(city: str, lang: str):
+    url = "https://api.openweathermap.org/data/2.5/forecast"
+    params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang}
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+def format_forecast_message(data: dict, lang: str, t: dict) -> str:
+    city = data["city"]["name"]
+    country = data["city"]["country"]
+    
+    # Group forecasts by day
+    days = {}
+    for item in data["list"]:
+        date = item["dt_txt"].split(" ")[0]
+        if date not in days:
+            days[date] = []
+        days[date].append(item)
+    
+    sky_emojis = {
+        "01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
+        "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"
+    }
+    
+    msg = f"{t['forecast_title']} *{city}, {country}*\n━━━━━━━━━━━━━━━━━━\n"
+    
+    for i, (date, items) in enumerate(days.items()):
+        if i >= 5:
+            break
+        temps = [item["main"]["temp"] for item in items]
+        descriptions = [item["weather"][0]["description"] for item in items]
+        icons = [item["weather"][0]["icon"] for item in items]
+        temp_min = min(temps)
+        temp_max = max(temps)
+        description = descriptions[len(descriptions)//2].capitalize()
+        icon = icons[len(icons)//2]
+        sky = sky_emojis.get(icon[:2], "🌡️")
+        
+        # Format date nicely
+        from datetime import datetime
+        day = datetime.strptime(date, "%Y-%m-%d")
+        day_name = day.strftime("%A, %d %b")
+        
+        msg += f"\n{sky} *{day_name}*\n"
+        msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C\n"
+        msg += f"  {description}\n"
+    
+    msg += f"\n━━━━━━━━━━━━━━━━━━"
+    return msg
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -389,6 +440,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(user_id)
     t = TEXTS[lang]
 
+    # ── Forecast button ─────────────────────────────────
+    if text in FORECAST_BUTTONS:
+        user_state[user_id] = "choosing_forecast_city"
+        await update.message.reply_text(t["forecast_ask"], parse_mode="Markdown")
+        return
+        
     # ── Switch language button ──────────────────────────
     if text in SWITCH_BUTTONS:
         user_state[user_id] = "choosing_lang"
@@ -403,13 +460,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t["location_instructions"], parse_mode="Markdown")
         return
 
-    # ── City search ─────────────────────────────────────
+ # ── City search or forecast city ────────────────────
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
-    data = get_weather(text, t["api_lang"])
-    if data:
-        await update.message.reply_text(format_weather_message(data, lang), parse_mode="Markdown")
+
+    if user_state.get(user_id) == "choosing_forecast_city":
+        user_state[user_id] = "choosing_city"
+        forecast_data = get_forecast(text, t["api_lang"])
+        if forecast_data:
+            msg = format_forecast_message(forecast_data, lang, t)
+            await update.message.reply_text(msg, parse_mode="Markdown")
+        else:
+            await update.message.reply_text(t["not_found"].format(text), parse_mode="Markdown")
     else:
-        await update.message.reply_text(t["not_found"].format(text), parse_mode="Markdown")
+        data = get_weather(text, t["api_lang"])
+        if data:
+            await update.message.reply_text(format_weather_message(data, lang), parse_mode="Markdown")
+        else:
+            await update.message.reply_text(t["not_found"].format(text), parse_mode="Markdown")
 
 
 def main():
