@@ -292,6 +292,7 @@ def format_weather_message(data, lang):
         f"{sky} *{t['weather_title']} {city}, {country}*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"{t['temperature']}: *{temp:.1f}°C* ({t['feels_like']} {feels_like:.1f}°C)\n"
+        f"📊 {t['today_range']}: 🔵 {data['temp_min']:.1f}°C — 🔴 {data['temp_max']:.1f}°C\n"
         f"{t['condition']}: {description}\n"
         f"{t['humidity']}: {humidity}%\n"
         f"{t['wind']}: {wind_speed} м/с\n\n"
