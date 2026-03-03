@@ -1,8 +1,11 @@
 import os
+import json
 import requests
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 TELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
 WEATHER_API_KEY = "3813f517bca011b6230db64ff9907de5"
@@ -13,6 +16,11 @@ AIR_URL = "https://api.openweathermap.org/data/2.5/air_pollution"
 
 user_languages = {}
 user_state = {}
+user_cities = {}       # saved home city
+user_notif_time = {}   # saved notification time "HH:MM"
+user_notif_on = {}     # notification enabled True/False
+
+scheduler = AsyncIOScheduler()
 
 TEXTS = {
     "ru": {
@@ -24,12 +32,14 @@ TEXTS = {
         ),
         "help": (
             "ℹ️ *Как пользоваться ботом:*\n\n"
-            "1️⃣ Напиши название города (например: `Париж`, `Дубай`, `Лондон`)\n"
-            "2️⃣ Или нажми кнопку 📎 и поделись геолокацией\n"
-            "3️⃣ Я покажу погоду и советы по одежде!\n\n"
+            "1️⃣ Напиши название города — получи погоду\n"
+            "2️⃣ Или нажми 📍 и поделись геолокацией\n"
+            "3️⃣ Нажми 📅 для прогноза на 5 дней\n"
+            "4️⃣ Нажми ⏰ для настройки утренних уведомлений\n\n"
             "Команды:\n"
-            "/start — Приветственное сообщение\n"
+            "/start — Приветствие\n"
             "/language — Сменить язык\n"
+            "/notify — Настроить уведомления\n"
             "/help — Это сообщение"
         ),
         "lang_set": "✅ Язык установлен: *Русский*\n\nНапиши название города чтобы узнать погоду!",
@@ -61,8 +71,28 @@ TEXTS = {
         "forecast_btn": "📅 Прогноз на 5 дней",
         "forecast_title": "📅 Прогноз на 5 дней для",
         "forecast_ask": "🏙️ Для какого города показать прогноз?\nНапиши название города:",
+        "notif_btn": "⏰ Уведомления",
+        "notif_menu": (
+            "⏰ *Настройка утренних уведомлений*\n\n"
+            "Каждое утро я буду отправлять тебе погоду для твоего города!\n\n"
+            "Текущий город: *{}*\n"
+            "Время уведомления: *{}*\n"
+            "Статус: *{}*"
+        ),
+        "notif_on": "✅ Включены",
+        "notif_off": "❌ Выключены",
+        "notif_set_city": "🏙️ Напиши название своего города для уведомлений:",
+        "notif_set_time": "🕐 Напиши время уведомления в формате *ЧЧ:ММ*\nНапример: `07:30` или `08:00`",
+        "notif_city_saved": "✅ Город сохранён: *{}*",
+        "notif_time_saved": "✅ Время установлено: *{}*\nУведомления включены! 🎉",
+        "notif_time_invalid": "❌ Неверный формат! Напиши время как `07:30` или `08:00`",
+        "notif_enabled": "✅ Утренние уведомления *включены!*\nБудешь получать погоду каждый день в *{}* для города *{}*",
+        "notif_disabled": "❌ Утренние уведомления *выключены*",
+        "notif_no_city": "⚠️ Сначала сохрани свой город! Нажми ⏰ Уведомления",
+        "morning_msg": "🌅 *Доброе утро!* Вот погода на сегодня:",
         "api_lang": "ru",
-        "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"], ["📅 Прогноз на 5 дней"]],
+        "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"], ["📅 Прогноз на 5 дней", "⏰ Уведомления"]],
+        "notif_keyboard": [["🏙️ Сменить город", "🕐 Сменить время"], ["✅ Включить", "❌ Выключить"], ["🔙 Назад"]],
         "clothing": {
             "very_cold_1": "🧥 Тёплое зимнее пальто, термобельё, шерстяной свитер",
             "very_cold_2": "🧣 Плотный шарф, тёплая шапка, перчатки — обязательно!",
@@ -98,12 +128,14 @@ TEXTS = {
         ),
         "help": (
             "ℹ️ *Як користуватися ботом:*\n\n"
-            "1️⃣ Напиши назву міста (наприклад: `Париж`, `Дубай`, `Лондон`)\n"
-            "2️⃣ Або натисни кнопку 📎 і поділися геолокацією\n"
-            "3️⃣ Я покажу погоду та поради щодо одягу!\n\n"
+            "1️⃣ Напиши назву міста — отримай погоду\n"
+            "2️⃣ Або натисни 📍 і поділися геолокацією\n"
+            "3️⃣ Натисни 📅 для прогнозу на 5 днів\n"
+            "4️⃣ Натисни ⏰ для налаштування ранкових сповіщень\n\n"
             "Команди:\n"
-            "/start — Привітальне повідомлення\n"
+            "/start — Привітання\n"
             "/language — Змінити мову\n"
+            "/notify — Налаштувати сповіщення\n"
             "/help — Це повідомлення"
         ),
         "lang_set": "✅ Мову встановлено: *Українська*\n\nНапиши назву міста щоб дізнатися погоду!",
@@ -135,8 +167,28 @@ TEXTS = {
         "forecast_btn": "📅 Прогноз на 5 днів",
         "forecast_title": "📅 Прогноз на 5 днів для",
         "forecast_ask": "🏙️ Для якого міста показати прогноз?\nНапиши назву міста:",
+        "notif_btn": "⏰ Сповіщення",
+        "notif_menu": (
+            "⏰ *Налаштування ранкових сповіщень*\n\n"
+            "Щоранку я буду надсилати тобі погоду для твого міста!\n\n"
+            "Поточне місто: *{}*\n"
+            "Час сповіщення: *{}*\n"
+            "Статус: *{}*"
+        ),
+        "notif_on": "✅ Увімкнено",
+        "notif_off": "❌ Вимкнено",
+        "notif_set_city": "🏙️ Напиши назву свого міста для сповіщень:",
+        "notif_set_time": "🕐 Напиши час сповіщення у форматі *ГГ:ХХ*\nНаприклад: `07:30` або `08:00`",
+        "notif_city_saved": "✅ Місто збережено: *{}*",
+        "notif_time_saved": "✅ Час встановлено: *{}*\nСповіщення увімкнено! 🎉",
+        "notif_time_invalid": "❌ Невірний формат! Напиши час як `07:30` або `08:00`",
+        "notif_enabled": "✅ Ранкові сповіщення *увімкнено!*\nБудеш отримувати погоду щодня о *{}* для міста *{}*",
+        "notif_disabled": "❌ Ранкові сповіщення *вимкнено*",
+        "notif_no_city": "⚠️ Спочатку збережи своє місто! Натисни ⏰ Сповіщення",
+        "morning_msg": "🌅 *Доброго ранку!* Ось погода на сьогодні:",
         "api_lang": "uk",
-        "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"], ["📅 Прогноз на 5 днів"]],
+        "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"], ["📅 Прогноз на 5 днів", "⏰ Сповіщення"]],
+        "notif_keyboard": [["🏙️ Змінити місто", "🕐 Змінити час"], ["✅ Увімкнути", "❌ Вимкнути"], ["🔙 Назад"]],
         "clothing": {
             "very_cold_1": "🧥 Тепле зимове пальто, термобілизна, вовняний светр",
             "very_cold_2": "🧣 Щільний шарф, тепла шапка, рукавиці — обов'язково!",
@@ -172,12 +224,14 @@ TEXTS = {
         ),
         "help": (
             "ℹ️ *How to use this bot:*\n\n"
-            "1️⃣ Type any city name (e.g. `Paris`, `Dubai`, `London`)\n"
-            "2️⃣ Or tap 📎 and share your location\n"
-            "3️⃣ I'll show the weather and outfit advice!\n\n"
+            "1️⃣ Type a city name — get the weather\n"
+            "2️⃣ Or tap 📍 and share your location\n"
+            "3️⃣ Tap 📅 for 5-day forecast\n"
+            "4️⃣ Tap ⏰ to set up morning notifications\n\n"
             "Commands:\n"
-            "/start — Welcome message\n"
+            "/start — Welcome\n"
             "/language — Change language\n"
+            "/notify — Set up notifications\n"
             "/help — This message"
         ),
         "lang_set": "✅ Language set: *English*\n\nType a city name to get the weather!",
@@ -208,8 +262,28 @@ TEXTS = {
         "forecast_btn": "📅 5-Day Forecast",
         "forecast_title": "📅 5-Day Forecast for",
         "forecast_ask": "🏙️ Which city do you want the forecast for?\nType a city name:",
+        "notif_btn": "⏰ Notifications",
+        "notif_menu": (
+            "⏰ *Morning Notification Settings*\n\n"
+            "Every morning I'll send you the weather for your city!\n\n"
+            "Current city: *{}*\n"
+            "Notification time: *{}*\n"
+            "Status: *{}*"
+        ),
+        "notif_on": "✅ Enabled",
+        "notif_off": "❌ Disabled",
+        "notif_set_city": "🏙️ Type your home city name for notifications:",
+        "notif_set_time": "🕐 Type notification time in *HH:MM* format\nExample: `07:30` or `08:00`",
+        "notif_city_saved": "✅ City saved: *{}*",
+        "notif_time_saved": "✅ Time set: *{}*\nNotifications enabled! 🎉",
+        "notif_time_invalid": "❌ Invalid format! Type time like `07:30` or `08:00`",
+        "notif_enabled": "✅ Morning notifications *enabled!*\nYou'll get weather every day at *{}* for *{}*",
+        "notif_disabled": "❌ Morning notifications *disabled*",
+        "notif_no_city": "⚠️ Save your home city first! Tap ⏰ Notifications",
+        "morning_msg": "🌅 *Good morning!* Here's today's weather:",
         "api_lang": "en",
-        "keyboard": [["📍 My Location", "🌐 Change Language"], ["📅 5-Day Forecast"]],
+        "keyboard": [["📍 My Location", "🌐 Change Language"], ["📅 5-Day Forecast", "⏰ Notifications"]],
+        "notif_keyboard": [["🏙️ Change City", "🕐 Change Time"], ["✅ Enable", "❌ Disable"], ["🔙 Back"]],
         "clothing": {
             "very_cold_1": "🧥 Heavy winter coat, thermal underwear, wool sweater",
             "very_cold_2": "🧣 Thick scarf, warm hat, gloves — essential!",
@@ -242,6 +316,12 @@ LANG_BUTTONS = ["🇷🇺 Русский", "🇺🇦 Українська", "�
 LOCATION_BUTTONS = ["📍 Моё местоположение", "📍 Моє місцезнаходження", "📍 My Location"]
 SWITCH_BUTTONS = ["🌐 Сменить язык", "🌐 Змінити мову", "🌐 Change Language"]
 FORECAST_BUTTONS = ["📅 Прогноз на 5 дней", "📅 Прогноз на 5 днів", "📅 5-Day Forecast"]
+NOTIF_BUTTONS = ["⏰ Уведомления", "⏰ Сповіщення", "⏰ Notifications"]
+NOTIF_CITY_BUTTONS = ["🏙️ Сменить город", "🏙️ Змінити місто", "🏙️ Change City"]
+NOTIF_TIME_BUTTONS = ["🕐 Сменить время", "🕐 Змінити час", "🕐 Change Time"]
+NOTIF_ENABLE_BUTTONS = ["✅ Включить", "✅ Увімкнути", "✅ Enable"]
+NOTIF_DISABLE_BUTTONS = ["❌ Выключить", "❌ Вимкнути", "❌ Disable"]
+BACK_BUTTONS = ["🔙 Назад", "🔙 Назад", "🔙 Back"]
 
 
 def get_lang(user_id):
@@ -447,6 +527,49 @@ def show_lang_keyboard():
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
 
+def show_notif_menu(user_id, t):
+    city = user_cities.get(user_id, "—")
+    time = user_notif_time.get(user_id, "—")
+    status = t["notif_on"] if user_notif_on.get(user_id) else t["notif_off"]
+    text = t["notif_menu"].format(city, time, status)
+    keyboard = ReplyKeyboardMarkup(t["notif_keyboard"], resize_keyboard=True)
+    return text, keyboard
+
+
+async def send_morning_weather(app, user_id):
+    lang = get_lang(user_id)
+    t = TEXTS[lang]
+    city = user_cities.get(user_id)
+    if not city:
+        return
+    data = get_weather(city, t["api_lang"])
+    if data:
+        msg = t["morning_msg"] + "\n\n" + format_weather_message(data, lang)
+        try:
+            await app.bot.send_message(chat_id=user_id, text=msg, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Failed to send morning weather to {user_id}: {e}")
+
+
+def schedule_notification(app, user_id, time_str):
+    hour, minute = map(int, time_str.split(":"))
+    job_id = f"morning_{user_id}"
+    if scheduler.get_job(job_id):
+        scheduler.remove_job(job_id)
+    scheduler.add_job(
+        send_morning_weather,
+        CronTrigger(hour=hour, minute=minute),
+        args=[app, user_id],
+        id=job_id
+    )
+
+
+def remove_notification(user_id):
+    job_id = f"morning_{user_id}"
+    if scheduler.get_job(job_id):
+        scheduler.remove_job(job_id)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state[update.message.from_user.id] = "choosing_lang"
     await update.message.reply_text(
@@ -461,6 +584,15 @@ async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🌐 Выбери язык / Оберіть мову / Choose language:",
         reply_markup=show_lang_keyboard()
     )
+
+
+async def notify_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    lang = get_lang(user_id)
+    t = TEXTS[lang]
+    user_state[user_id] = "notif_menu"
+    text, keyboard = show_notif_menu(user_id, t)
+    await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -492,7 +624,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text.strip()
     state = user_state.get(user_id, "choosing_city")
+    app = context.application
 
+    # ── Language selection ──────────────────────────────
     if text in LANG_BUTTONS:
         if text == "🇺🇦 Українська":
             user_languages[user_id] = "uk"
@@ -520,6 +654,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(user_id)
     t = TEXTS[lang]
 
+    # ── Switch language ─────────────────────────────────
     if text in SWITCH_BUTTONS:
         user_state[user_id] = "choosing_lang"
         await update.message.reply_text(
@@ -528,15 +663,101 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # ── Location button ─────────────────────────────────
     if text in LOCATION_BUTTONS:
         await update.message.reply_text(t["location_instructions"], parse_mode="Markdown")
         return
 
+    # ── Forecast button ─────────────────────────────────
     if text in FORECAST_BUTTONS:
         user_state[user_id] = "choosing_forecast_city"
         await update.message.reply_text(t["forecast_ask"], parse_mode="Markdown")
         return
 
+    # ── Notifications menu ──────────────────────────────
+    if text in NOTIF_BUTTONS:
+        user_state[user_id] = "notif_menu"
+        msg, keyboard = show_notif_menu(user_id, t)
+        await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+        return
+
+    # ── Back button ─────────────────────────────────────
+    if text in BACK_BUTTONS:
+        user_state[user_id] = "choosing_city"
+        reply_markup = ReplyKeyboardMarkup(t["keyboard"], resize_keyboard=True)
+        await update.message.reply_text(t["welcome"], parse_mode="Markdown", reply_markup=reply_markup)
+        return
+
+    # ── Notification sub-menu buttons ───────────────────
+    if text in NOTIF_CITY_BUTTONS:
+        user_state[user_id] = "notif_set_city"
+        await update.message.reply_text(t["notif_set_city"], parse_mode="Markdown")
+        return
+
+    if text in NOTIF_TIME_BUTTONS:
+        user_state[user_id] = "notif_set_time"
+        await update.message.reply_text(t["notif_set_time"], parse_mode="Markdown")
+        return
+
+    if text in NOTIF_ENABLE_BUTTONS:
+        city = user_cities.get(user_id)
+        time_str = user_notif_time.get(user_id)
+        if not city:
+            await update.message.reply_text(t["notif_no_city"], parse_mode="Markdown")
+            return
+        if not time_str:
+            user_state[user_id] = "notif_set_time"
+            await update.message.reply_text(t["notif_set_time"], parse_mode="Markdown")
+            return
+        user_notif_on[user_id] = True
+        schedule_notification(app, user_id, time_str)
+        await update.message.reply_text(
+            t["notif_enabled"].format(time_str, city),
+            parse_mode="Markdown"
+        )
+        return
+
+    if text in NOTIF_DISABLE_BUTTONS:
+        user_notif_on[user_id] = False
+        remove_notification(user_id)
+        await update.message.reply_text(t["notif_disabled"], parse_mode="Markdown")
+        return
+
+    # ── Notification city input ─────────────────────────
+    if state == "notif_set_city":
+        weather_check = get_weather(text, t["api_lang"])
+        if weather_check:
+            user_cities[user_id] = text
+            user_state[user_id] = "notif_menu"
+            await update.message.reply_text(t["notif_city_saved"].format(text), parse_mode="Markdown")
+            msg, keyboard = show_notif_menu(user_id, t)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+        else:
+            await update.message.reply_text(t["not_found"].format(text), parse_mode="Markdown")
+        return
+
+    # ── Notification time input ─────────────────────────
+    if state == "notif_set_time":
+        try:
+            parts = text.strip().split(":")
+            if len(parts) != 2:
+                raise ValueError
+            h, m = int(parts[0]), int(parts[1])
+            if not (0 <= h <= 23 and 0 <= m <= 59):
+                raise ValueError
+            time_str = f"{h:02d}:{m:02d}"
+            user_notif_time[user_id] = time_str
+            user_notif_on[user_id] = True
+            schedule_notification(app, user_id, time_str)
+            user_state[user_id] = "notif_menu"
+            await update.message.reply_text(t["notif_time_saved"].format(time_str), parse_mode="Markdown")
+            msg, keyboard = show_notif_menu(user_id, t)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+        except ValueError:
+            await update.message.reply_text(t["notif_time_invalid"], parse_mode="Markdown")
+        return
+
+    # ── City search or forecast ─────────────────────────
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
 
     if user_state.get(user_id) == "choosing_forecast_city":
@@ -561,8 +782,10 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("notify", notify_command))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    scheduler.start()
     print("✅ Бот работает!")
     app.run_polling()
 
