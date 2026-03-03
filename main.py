@@ -417,7 +417,7 @@ if lang == "ru":
                 outfit += " + ☔ зонт"
             if any("снег" in d.lower() or "snow" in d.lower() for d in descriptions):
                 outfit += " + ❄️ сапоги"
-        elif lang == "uk":
+            elif lang == "uk":
             if temp_max <= 0:
                 outfit = "🧥 Тепле пальто, рукавиці, шапка"
             elif temp_max <= 8:
