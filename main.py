@@ -227,11 +227,26 @@ def get_lang(user_id: int) -> str:
 
 
 def get_weather(city: str, lang: str):
+    # Current weather
     params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang}
     response = requests.get(WEATHER_URL, params=params)
-    if response.status_code == 200:
-        return response.json()
-    return None
+    if response.status_code != 200:
+        return None
+    data = response.json()
+
+    # Daily min/max from forecast
+    forecast_url = "https://api.openweathermap.org/data/2.5/forecast"
+    params["cnt"] = 8  # next 24 hours (8 x 3h intervals)
+    forecast = requests.get(forecast_url, params=params)
+    if forecast.status_code == 200:
+        temps = [item["main"]["temp"] for item in forecast.json()["list"]]
+        data["temp_min"] = min(temps)
+        data["temp_max"] = max(temps)
+    else:
+        data["temp_min"] = data["main"]["temp_min"]
+        data["temp_max"] = data["main"]["temp_max"]
+
+    return data
 
 
 def get_clothing_advice(temp, weather_desc, wind_speed, t):
