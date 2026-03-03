@@ -4,8 +4,8 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
 # ============================
-TELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
-WEATHER_API_KEY = "3813f517bca011b6230db64ff9907de5"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "Y8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o")
+WEATHER_API_KEY = os.environ.get("WEATHER_API_KEY", "3813f517bca011b6230db64ff9907de5")
 # ============================
 
 WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
