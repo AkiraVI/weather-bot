@@ -1,18 +1,15 @@
 import os
 import requests
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# ============================
-TELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
+TETELEGRAM_TOKEN = "8690207690:AAFbUy-dd1akU1xelht_fD72EGbpnrAiS8o"
 WEATHER_API_KEY = "3813f517bca011b6230db64ff9907de5"
-# ============================
 
 WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 
-CHOOSING_LANG, CHOOSING_CITY = range(2)
-
 user_languages = {}
+user_state = {}  # "choosing_lang" or "choosing_city"
 
 TEXTS = {
     "ru": {
@@ -32,7 +29,6 @@ TEXTS = {
             "/language — Сменить язык\n"
             "/help — Это сообщение"
         ),
-        "choose_lang": "🌐 Выбери язык / Choose language / Оберіть мову:",
         "lang_set": "✅ Язык установлен: *Русский*\n\nНапиши название города чтобы узнать погоду!",
         "searching": "🔍 Ищу погоду для *{}*...",
         "not_found": (
@@ -41,14 +37,13 @@ TEXTS = {
             "Пример: `Лондон`, `Нью-Йорк`, `Токио`\n\n"
             "💡 Попробуй написать город на английском, например: `Moscow`, `Berlin`"
         ),
-        "location_error": "❌ Не удалось получить погоду для твоего местоположения. Попробуй ещё раз!",
+        "location_error": "❌ Не удалось получить погоду. Попробуй ещё раз!",
         "location_instructions": (
             "📍 Чтобы поделиться локацией:\n\n"
             "1️⃣ Нажми на скрепку 📎 внизу\n"
             "2️⃣ Выбери *Геопозиция*\n"
             "3️⃣ Отправь своё местоположение"
         ),
-        "enter_city": "📝 Напиши название города, например: `Москва` или `Токио`",
         "weather_title": "Погода в",
         "temperature": "🌡️ Температура",
         "feels_like": "ощущается как",
@@ -58,7 +53,7 @@ TEXTS = {
         "outfit_title": "👗 *Что надеть сегодня:*",
         "footer": "_Напиши другой город, чтобы проверить погоду там!_",
         "api_lang": "ru",
-        "keyboard": [["📍 Моё местоположение"], ["🌐 Сменить язык"]],
+        "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"]],
         "clothing": {
             "very_cold_1": "🧥 Тёплое зимнее пальто, термобельё, шерстяной свитер",
             "very_cold_2": "🧣 Плотный шарф, тёплая шапка, перчатки — обязательно!",
@@ -102,7 +97,6 @@ TEXTS = {
             "/language — Змінити мову\n"
             "/help — Це повідомлення"
         ),
-        "choose_lang": "🌐 Виберіть мову / Choose language / Выбери язык:",
         "lang_set": "✅ Мову встановлено: *Українська*\n\nНапиши назву міста щоб дізнатися погоду!",
         "searching": "🔍 Шукаю погоду для *{}*...",
         "not_found": (
@@ -111,14 +105,13 @@ TEXTS = {
             "Приклад: `Лондон`, `Нью-Йорк`, `Токіо`\n\n"
             "💡 Спробуй написати місто англійською, наприклад: `Kyiv`, `Berlin`"
         ),
-        "location_error": "❌ Не вдалося отримати погоду для твого місцезнаходження. Спробуй ще раз!",
+        "location_error": "❌ Не вдалося отримати погоду. Спробуй ще раз!",
         "location_instructions": (
             "📍 Щоб поділитися локацією:\n\n"
             "1️⃣ Натисни на скріпку 📎 внизу\n"
             "2️⃣ Вибери *Геопозиція*\n"
             "3️⃣ Відправ своє місцезнаходження"
         ),
-        "enter_city": "📝 Напиши назву міста, наприклад: `Київ` або `Токіо`",
         "weather_title": "Погода в",
         "temperature": "🌡️ Температура",
         "feels_like": "відчувається як",
@@ -128,7 +121,7 @@ TEXTS = {
         "outfit_title": "👗 *Що вдягнути сьогодні:*",
         "footer": "_Напиши інше місто, щоб перевірити погоду там!_",
         "api_lang": "uk",
-        "keyboard": [["📍 Моє місцезнаходження"], ["🌐 Змінити мову"]],
+        "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"]],
         "clothing": {
             "very_cold_1": "🧥 Тепле зимове пальто, термобілизна, вовняний светр",
             "very_cold_2": "🧣 Щільний шарф, тепла шапка, рукавиці — обов'язково!",
@@ -158,7 +151,7 @@ TEXTS = {
     "en": {
         "welcome": (
             "👋 *Welcome to the Weather & Outfit Bot!*\n\n"
-            "I'll tell you the current weather and what to wear outside! 🌤️👕\n\n"
+            "I'll tell you the current weather and what to wear! 🌤️👕\n\n"
             "Just *type a city name* (e.g. `London`, `Berlin`, `Tokyo`)\n"
             "or share your 📍 location!"
         ),
@@ -172,7 +165,6 @@ TEXTS = {
             "/language — Change language\n"
             "/help — This message"
         ),
-        "choose_lang": "🌐 Choose language / Выбери язык / Оберіть мову:",
         "lang_set": "✅ Language set: *English*\n\nType a city name to get the weather!",
         "searching": "🔍 Searching weather for *{}*...",
         "not_found": (
@@ -187,7 +179,6 @@ TEXTS = {
             "2️⃣ Select *Location*\n"
             "3️⃣ Send your current location"
         ),
-        "enter_city": "📝 Type a city name, e.g. `London` or `Tokyo`",
         "weather_title": "Weather in",
         "temperature": "🌡️ Temperature",
         "feels_like": "feels like",
@@ -197,7 +188,7 @@ TEXTS = {
         "outfit_title": "👗 *What to wear today:*",
         "footer": "_Type another city to check the weather there!_",
         "api_lang": "en",
-        "keyboard": [["📍 My Location"], ["🌐 Change Language"]],
+        "keyboard": [["📍 My Location", "🌐 Change Language"]],
         "clothing": {
             "very_cold_1": "🧥 Heavy winter coat, thermal underwear, wool sweater",
             "very_cold_2": "🧣 Thick scarf, warm hat, gloves — essential!",
@@ -226,26 +217,26 @@ TEXTS = {
     }
 }
 
-# ─── Weather & Clothing ───────────────────────────────────────────
+LANG_BUTTONS = ["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]
+LOCATION_BUTTONS = ["📍 Моё местоположение", "📍 Моє місцезнаходження", "📍 My Location"]
+SWITCH_BUTTONS = ["🌐 Сменить язык", "🌐 Змінити мову", "🌐 Change Language"]
 
-def get_weather(city: str, lang: str) -> dict | None:
-    params = {
-        "q": city,
-        "appid": WEATHER_API_KEY,
-        "units": "metric",
-        "lang": lang
-    }
+
+def get_lang(user_id: int) -> str:
+    return user_languages.get(user_id, "en")
+
+
+def get_weather(city: str, lang: str):
+    params = {"q": city, "appid": WEATHER_API_KEY, "units": "metric", "lang": lang}
     response = requests.get(WEATHER_URL, params=params)
-    print(response.json())
     if response.status_code == 200:
         return response.json()
     return None
 
 
-def get_clothing_advice(temp: float, weather_desc: str, wind_speed: float, t: dict) -> str:
+def get_clothing_advice(temp, weather_desc, wind_speed, t):
     advice = []
     c = t["clothing"]
-
     if temp <= 0:
         advice += [c["very_cold_1"], c["very_cold_2"], c["very_cold_3"]]
     elif temp <= 8:
@@ -258,21 +249,17 @@ def get_clothing_advice(temp: float, weather_desc: str, wind_speed: float, t: di
         advice += [c["warm_1"], c["warm_2"], c["warm_3"]]
     else:
         advice += [c["hot_1"], c["hot_2"], c["hot_3"]]
-
     rain_keywords = ["дождь", "ливень", "морось", "гроза", "дощ", "злива", "rain", "drizzle", "shower", "storm"]
-    if any(word in weather_desc.lower() for word in rain_keywords):
+    if any(w in weather_desc.lower() for w in rain_keywords):
         advice += [c["rain_1"], c["rain_2"]]
-
-    if any(word in weather_desc.lower() for word in ["снег", "сніг", "snow"]):
+    if any(w in weather_desc.lower() for w in ["снег", "сніг", "snow"]):
         advice += [c["snow_1"], c["snow_2"]]
-
     if wind_speed > 10:
         advice.append(c["wind"])
-
     return "\n".join(f"  {item}" for item in advice)
 
 
-def format_weather_message(data: dict, lang: str) -> str:
+def format_weather_message(data, lang):
     t = TEXTS[lang]
     city = data["name"]
     country = data["sys"]["country"]
@@ -281,15 +268,11 @@ def format_weather_message(data: dict, lang: str) -> str:
     humidity = data["main"]["humidity"]
     wind_speed = data["wind"]["speed"]
     description = data["weather"][0]["description"].capitalize()
-    weather_icon = data["weather"][0]["icon"]
-
-    sky_emojis = {
-        "01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
-        "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"
-    }
-    sky = sky_emojis.get(weather_icon[:2], "🌡️")
+    icon = data["weather"][0]["icon"]
+    sky_emojis = {"01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
+                  "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"}
+    sky = sky_emojis.get(icon[:2], "🌡️")
     clothing = get_clothing_advice(temp, description, wind_speed, t)
-
     return (
         f"{sky} *{t['weather_title']} {city}, {country}*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
@@ -304,58 +287,25 @@ def format_weather_message(data: dict, lang: str) -> str:
     )
 
 
-# ─── Handlers ────────────────────────────────────────────────────
-
-def get_lang(user_id: int) -> str:
-    return user_languages.get(user_id, "en")
-
-
-ALL_LANG_BUTTONS = [
-    "🌐 Сменить язык", "🌐 Змінити мову", "🌐 Change Language",
-    "🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English",
-    "📍 Моё местоположение", "📍 Моє місцезнаходження", "📍 My Location"
-]
+def show_lang_keyboard():
+    keyboard = [["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    user_state[update.message.from_user.id] = "choosing_lang"
     await update.message.reply_text(
         "🌐 Выбери язык / Оберіть мову / Choose language:",
-        reply_markup=reply_markup
+        reply_markup=show_lang_keyboard()
     )
-    return CHOOSING_LANG
 
 
 async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    user_state[update.message.from_user.id] = "choosing_lang"
     await update.message.reply_text(
         "🌐 Выбери язык / Оберіть мову / Choose language:",
-        reply_markup=reply_markup
+        reply_markup=show_lang_keyboard()
     )
-    return CHOOSING_LANG
-
-
-async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = update.message.text
-
-    if "Українська" in text or "🇺🇦" in text:
-        user_languages[user_id] = "uk"
-        lang = "uk"
-    elif "English" in text or "🇬🇧" in text:
-        user_languages[user_id] = "en"
-        lang = "en"
-    else:
-        user_languages[user_id] = "ru"
-        lang = "ru"
-
-    t = TEXTS[lang]
-    reply_markup = ReplyKeyboardMarkup(t["keyboard"], resize_keyboard=True)
-    await update.message.reply_text(t["lang_set"], parse_mode="Markdown", reply_markup=reply_markup)
-    await update.message.reply_text(t["welcome"], parse_mode="Markdown")
-    return CHOOSING_CITY
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -367,98 +317,85 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     lang = get_lang(user_id)
     t = TEXTS[lang]
-
     location = update.message.location
-    params = {
-        "lat": location.latitude,
-        "lon": location.longitude,
-        "appid": WEATHER_API_KEY,
-        "units": "metric",
-        "lang": t["api_lang"]
-    }
+    params = {"lat": location.latitude, "lon": location.longitude,
+              "appid": WEATHER_API_KEY, "units": "metric", "lang": t["api_lang"]}
     response = requests.get(WEATHER_URL, params=params)
     if response.status_code == 200:
-        msg = format_weather_message(response.json(), lang)
-        await update.message.reply_text(msg, parse_mode="Markdown")
+        await update.message.reply_text(format_weather_message(response.json(), lang), parse_mode="Markdown")
     else:
         await update.message.reply_text(t["location_error"])
-    return CHOOSING_CITY
 
 
-async def handle_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    text = update.message.text.strip()
+    state = user_state.get(user_id, "choosing_city")
+
+    # ── Language selection ──────────────────────────────
+    if text in LANG_BUTTONS or state == "choosing_lang":
+        if text == "🇺🇦 Українська":
+            user_languages[user_id] = "uk"
+            lang = "uk"
+        elif text == "🇬🇧 English":
+            user_languages[user_id] = "en"
+            lang = "en"
+        elif text == "🇷🇺 Русский":
+            user_languages[user_id] = "ru"
+            lang = "ru"
+        else:
+            # Still waiting for language selection
+            await update.message.reply_text(
+                "🌐 Выбери язык / Оберіть мову / Choose language:",
+                reply_markup=show_lang_keyboard()
+            )
+            return
+
+        user_state[user_id] = "choosing_city"
+        t = TEXTS[lang]
+        reply_markup = ReplyKeyboardMarkup(t["keyboard"], resize_keyboard=True)
+        await update.message.reply_text(t["lang_set"], parse_mode="Markdown", reply_markup=reply_markup)
+        await update.message.reply_text(t["welcome"], parse_mode="Markdown")
+        return
+
     lang = get_lang(user_id)
     t = TEXTS[lang]
-    city = update.message.text.strip()
 
-    # Language switch buttons
-    if city in ["🌐 Сменить язык", "🌐 Змінити мову", "🌐 Change Language",
-                "🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]:
-        keyboard = [["🇷🇺 Русский", "🇺🇦 Українська", "🇬🇧 English"]]
-        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    # ── Switch language button ──────────────────────────
+    if text in SWITCH_BUTTONS:
+        user_state[user_id] = "choosing_lang"
         await update.message.reply_text(
             "🌐 Выбери язык / Оберіть мову / Choose language:",
-            reply_markup=reply_markup
+            reply_markup=show_lang_keyboard()
         )
-        return CHOOSING_LANG
+        return
 
-    # Location button
-    if city in ["📍 Моё местоположение", "📍 Моє місцезнаходження", "📍 My Location"]:
+    # ── Location button ─────────────────────────────────
+    if text in LOCATION_BUTTONS:
         await update.message.reply_text(t["location_instructions"], parse_mode="Markdown")
-        return CHOOSING_CITY
+        return
 
-    # Search weather
-    await update.message.reply_text(t["searching"].format(city), parse_mode="Markdown")
-    data = get_weather(city, t["api_lang"])
+    # ── City search ─────────────────────────────────────
+    await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
+    data = get_weather(text, t["api_lang"])
     if data:
-        msg = format_weather_message(data, lang)
-        await update.message.reply_text(msg, parse_mode="Markdown")
+        await update.message.reply_text(format_weather_message(data, lang), parse_mode="Markdown")
     else:
-        await update.message.reply_text(t["not_found"].format(city), parse_mode="Markdown")
-    return CHOOSING_CITY
+        await update.message.reply_text(t["not_found"].format(text), parse_mode="Markdown")
 
-
-# ─── Main ────────────────────────────────────────────────────────
 
 def main():
-    print("🤖 Погодный бот запускается...")
+    print("🤖 Бот запускается...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    conv_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler("start", start),
-            CommandHandler("language", language_command),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
-        ],
-states={
-            CHOOSING_LANG: [
-                MessageHandler(filters.Regex("^(🇷🇺 Русский|🇺🇦 Українська|🇬🇧 English)$"), set_language),
-            ],
-            CHOOSING_CITY: [
-                MessageHandler(filters.LOCATION, handle_location),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
-            ],
-        },
-        fallbacks=[
-            CommandHandler("start", start),
-            CommandHandler("language", language_command),
-            CommandHandler("help", help_command),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_city),
-            MessageHandler(filters.LOCATION, handle_location),
-        ],
-        allow_reentry=True
-    )
-
-    app.add_handler(conv_handler)
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(MessageHandler(filters.LOCATION, handle_location))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("✅ Бот работает! Нажми Ctrl+C для остановки.")
+    print("✅ Бот работает!")
     app.run_polling()
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":
