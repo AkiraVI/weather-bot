@@ -367,7 +367,6 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
     city = data["city"]["name"]
     country = data["city"]["country"]
     
-    # Group forecasts by day
     days = {}
     for item in data["list"]:
         date = item["dt_txt"].split(" ")[0]
@@ -394,15 +393,13 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         icon = icons[len(icons)//2]
         sky = sky_emojis.get(icon[:2], "🌡️")
         
-        # Format date nicely
         from datetime import datetime
         day = datetime.strptime(date, "%Y-%m-%d")
         day_name = day.strftime("%A, %d %b")
         
-               msg += f"\n{sky} *{day_name}*\n"
+        msg += f"\n{sky} *{day_name}*\n"
         msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C — {description}\n"
         
-        # Outfit recommendation based on max temp
         if temp_max <= 0:
             outfit = "🧥 Heavy winter coat, gloves, warm hat"
         elif temp_max <= 8:
@@ -416,16 +413,14 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         else:
             outfit = "🩳 Light clothes, shorts or dress"
         
-        # Rain check
         if any("rain" in d.lower() or "дождь" in d.lower() or "дощ" in d.lower() for d in descriptions):
             outfit += " + ☔ umbrella"
         
-        # Snow check
         if any("snow" in d.lower() or "снег" in d.lower() or "сніг" in d.lower() for d in descriptions):
             outfit += " + ❄️ boots"
 
         msg += f"  👗 {outfit}\n"
-    
+
     msg += f"\n━━━━━━━━━━━━━━━━━━"
     return msg
 
