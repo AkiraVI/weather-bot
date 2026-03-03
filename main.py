@@ -333,7 +333,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = user_state.get(user_id, "choosing_city")
 
     # ── Language selection ──────────────────────────────
-    if text in LANG_BUTTONS or state == "choosing_lang":
+    if text in LANG_BUTTONS:
         if text == "🇺🇦 Українська":
             user_languages[user_id] = "uk"
             lang = "uk"
