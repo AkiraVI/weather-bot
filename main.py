@@ -320,10 +320,12 @@ async def handle_city(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return CHOOSING_LANG
 
-    # Skip other keyboard buttons
-    keyboard_buttons = [btn for row in t["keyboard"] for btn in row]
-    if city in keyboard_buttons:
-        await update.message.reply_text(t["enter_city"], parse_mode="Markdown")
+# Skip other keyboard buttons
+    if city in ["📍 Моё местоположение", "📍 Моє місцезнаходження"]:
+        await update.message.reply_text(
+            "📍 Нажми кнопку прикрепить геолокацию / Натисни кнопку прикріпити геолокацію 👇",
+            parse_mode="Markdown"
+        )
         return CHOOSING_CITY
 
     # Search weather
