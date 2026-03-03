@@ -395,7 +395,17 @@ def format_forecast_message(data: dict, lang: str, t: dict) -> str:
         sky = sky_emojis.get(icon[:2], "🌡️")
 
         day = datetime.strptime(date, "%Y-%m-%d")
-        day_name = day.strftime("%A, %d %b")
+        days_ru = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+        days_uk = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"]
+        months_ru = ["", "Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
+        months_uk = ["", "Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"]
+
+        if lang == "ru":
+            day_name = f"{days_ru[day.weekday()]}, {day.day:02d} {months_ru[day.month]}"
+        elif lang == "uk":
+            day_name = f"{days_uk[day.weekday()]}, {day.day:02d} {months_uk[day.month]}"
+        else:
+            day_name = day.strftime("%A, %d %b")
 
         msg += f"\n{sky} *{day_name}*\n"
         msg += f"  🔵 {temp_min:.1f}°C — 🔴 {temp_max:.1f}°C — {description}\n"
