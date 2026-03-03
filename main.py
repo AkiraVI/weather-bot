@@ -53,6 +53,7 @@ TEXTS = {
         "outfit_title": "👗 *Что надеть сегодня:*",
         "footer": "_Напиши другой город, чтобы проверить погоду там!_",
         "api_lang": "ru",
+        "today_range": "Сегодня",
         "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"]],
         "clothing": {
             "very_cold_1": "🧥 Тёплое зимнее пальто, термобельё, шерстяной свитер",
@@ -121,6 +122,7 @@ TEXTS = {
         "outfit_title": "👗 *Що вдягнути сьогодні:*",
         "footer": "_Напиши інше місто, щоб перевірити погоду там!_",
         "api_lang": "uk",
+        "today_range": "Сьогодні",
         "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"]],
         "clothing": {
             "very_cold_1": "🧥 Тепле зимове пальто, термобілизна, вовняний светр",
@@ -187,6 +189,7 @@ TEXTS = {
         "wind": "💨 Wind",
         "outfit_title": "👗 *What to wear today:*",
         "footer": "_Type another city to check the weather there!_",
+        "today_range": "Today",
         "api_lang": "en",
         "keyboard": [["📍 My Location", "🌐 Change Language"]],
         "clothing": {
