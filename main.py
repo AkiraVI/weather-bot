@@ -290,7 +290,7 @@ def format_weather_message(data, lang):
     sky_emojis = {"01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
                   "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"}
     sky = sky_emojis.get(icon[:2], "🌡️")
-    clothing = get_clothing_advice(temp, description, wind_speed, t)
+    clothing = get_clothing_advice(data.get("temp_max", temp), description, wind_speed, t)
     return (
         f"{sky} *{t['weather_title']} {city}, {country}*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
