@@ -510,7 +510,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t["location_instructions"], parse_mode="Markdown")
         return
 
- # ── City search or forecast city ────────────────────
+    # ── City search or forecast ─────────────────────────
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
 
     if user_state.get(user_id) == "choosing_forecast_city":
