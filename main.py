@@ -96,7 +96,7 @@ TEXTS = {
         "notif_no_city": "⚠️ Сначала сохрани свой город! Нажми ⏰ Уведомления",
         "morning_msg": "🌅 *Доброе утро!* Вот погода на сегодня:",
         "currency_btn": "💱 Курс валют",
-        "currency_title": "💱 *Курс валют к EUR:*",
+        "currency_title": "💱 *Курс валют:*",
         "currency_loading": "💱 Загружаю курс валют...",
         "currency_error": "❌ Не удалось загрузить курс валют. Попробуй позже.",
         "api_lang": "ru",
@@ -199,7 +199,7 @@ TEXTS = {
         "notif_no_city": "⚠️ Спочатку збережи своє місто! Натисни ⏰ Сповіщення",
         "morning_msg": "🌅 *Доброго ранку!* Ось погода на сьогодні:",
         "currency_btn": "💱 Курс валют",
-        "currency_title": "💱 *Курс валют до EUR:*",
+        "currency_title": "💱 *Курс валют:*",
         "currency_loading": "💱 Завантажую курс валют...",
         "currency_error": "❌ Не вдалося завантажити курс валют. Спробуй пізніше.",
         "api_lang": "uk",
@@ -301,7 +301,7 @@ TEXTS = {
         "notif_no_city": "⚠️ Save your home city first! Tap ⏰ Notifications",
         "morning_msg": "🌅 *Good morning!* Here's today's weather:",
         "currency_btn": "💱 Exchange Rates",
-        "currency_title": "💱 *Exchange Rates to EUR:*",
+        "currency_title": "💱 *Exchange Rates:*",
         "currency_loading": "💱 Loading exchange rates...",
         "currency_error": "❌ Couldn't load exchange rates. Try again later.",
         "api_lang": "en",
@@ -346,11 +346,6 @@ NOTIF_ENABLE_BUTTONS = ["✅ Включить", "✅ Увімкнути", "✅ E
 NOTIF_DISABLE_BUTTONS = ["❌ Выключить", "❌ Вимкнути", "❌ Disable"]
 BACK_BUTTONS = ["🔙 Назад", "🔙 Back"]
 CURRENCY_BUTTONS = ["💱 Курс валют", "💱 Exchange Rates"]
-CURRENCIES = ["USD", "GBP", "UAH", "RUB", "PLN", "CHF", "JPY"]
-CURRENCY_FLAGS = {
-    "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
-    "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
-}
 
 
 def get_lang(user_id):
@@ -723,21 +718,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not rates:
             await update.message.reply_text(t["currency_error"])
             return
+        uah = rates.get("UAH", 0)
+        usd = rates.get("USD", 1)
+        usd_uah = uah / usd
+        eur_uah = uah
+        spread = 0.01
+        usd_buy = usd_uah * (1 - spread)
+        usd_sell = usd_uah * (1 + spread)
+        eur_buy = eur_uah * (1 - spread)
+        eur_sell = eur_uah * (1 + spread)
         msg = t["currency_title"] + "\n━━━━━━━━━━━━━━━━━━\n"
-        msg += "🇪🇺 1 EUR =\n\n"
-        for code in CURRENCIES:
-            if code in rates:
-                flag = CURRENCY_FLAGS.get(code, "")
-                rate = rates[code]
-                if rate >= 100:
-                    msg += f"{flag} {code}: *{rate:.2f}*\n"
-                else:
-                    msg += f"{flag} {code}: *{rate:.4f}*\n"
+        msg += f"🇺🇸Доллар: *{usd_buy:.2f} / {usd_sell:.2f}*\n"
+        msg += f"🇪🇺Евро: *{eur_buy:.2f} / {eur_sell:.2f}*\n"
         try:
             btc = float(requests.get(BTC_URL, timeout=5).json()["price"])
             eth = float(requests.get(ETH_URL, timeout=5).json()["price"])
-            msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
-            msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
+            msg += f"🪙Bitcoin: *{btc:,.0f}$*\n"
+            msg += f"🔷ETH: *{eth:,.0f}$*\n"
         except Exception:
             pass
         msg += "━━━━━━━━━━━━━━━━━━"
