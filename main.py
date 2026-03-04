@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup
@@ -13,12 +12,15 @@ WEATHER_API_KEY = "3813f517bca011b6230db64ff9907de5"
 WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
 AIR_URL = "https://api.openweathermap.org/data/2.5/air_pollution"
+CURRENCY_URL = "https://api.exchangerate-api.com/v4/latest/EUR"
+BTC_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+ETH_URL = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT"
 
 user_languages = {}
 user_state = {}
-user_cities = {}       # saved home city
-user_notif_time = {}   # saved notification time "HH:MM"
-user_notif_on = {}     # notification enabled True/False
+user_cities = {}
+user_notif_time = {}
+user_notif_on = {}
 
 scheduler = AsyncIOScheduler()
 
@@ -35,7 +37,8 @@ TEXTS = {
             "1️⃣ Напиши название города — получи погоду\n"
             "2️⃣ Или нажми 📍 и поделись геолокацией\n"
             "3️⃣ Нажми 📅 для прогноза на 5 дней\n"
-            "4️⃣ Нажми ⏰ для настройки утренних уведомлений\n\n"
+            "4️⃣ Нажми ⏰ для настройки утренних уведомлений\n"
+            "5️⃣ Нажми 💱 для курса валют и криптовалют\n\n"
             "Команды:\n"
             "/start — Приветствие\n"
             "/language — Сменить язык\n"
@@ -66,6 +69,8 @@ TEXTS = {
         "wind": "💨 Ветер",
         "air_quality": "🌿 Качество воздуха",
         "air_levels": ["Отличное", "Хорошее", "Умеренное", "Плохое", "Очень плохое"],
+        "sunrise": "🌅 Восход",
+        "sunset": "🌇 Закат",
         "outfit_title": "👗 *Что надеть сегодня:*",
         "footer": "_Напиши другой город, чтобы проверить погоду там!_",
         "forecast_btn": "📅 Прогноз на 5 дней",
@@ -90,8 +95,6 @@ TEXTS = {
         "notif_disabled": "❌ Утренние уведомления *выключены*",
         "notif_no_city": "⚠️ Сначала сохрани свой город! Нажми ⏰ Уведомления",
         "morning_msg": "🌅 *Доброе утро!* Вот погода на сегодня:",
-        "sunrise": "🌅 Восход",
-        "sunset": "🌇 Закат",
         "currency_btn": "💱 Курс валют",
         "currency_title": "💱 *Курс валют к EUR:*",
         "currency_loading": "💱 Загружаю курс валют...",
@@ -137,7 +140,8 @@ TEXTS = {
             "1️⃣ Напиши назву міста — отримай погоду\n"
             "2️⃣ Або натисни 📍 і поділися геолокацією\n"
             "3️⃣ Натисни 📅 для прогнозу на 5 днів\n"
-            "4️⃣ Натисни ⏰ для налаштування ранкових сповіщень\n\n"
+            "4️⃣ Натисни ⏰ для налаштування ранкових сповіщень\n"
+            "5️⃣ Натисни 💱 для курсу валют і криптовалют\n\n"
             "Команди:\n"
             "/start — Привітання\n"
             "/language — Змінити мову\n"
@@ -168,6 +172,8 @@ TEXTS = {
         "wind": "💨 Вітер",
         "air_quality": "🌿 Якість повітря",
         "air_levels": ["Відмінна", "Добра", "Помірна", "Погана", "Дуже погана"],
+        "sunrise": "🌅 Схід сонця",
+        "sunset": "🌇 Захід сонця",
         "outfit_title": "👗 *Що вдягнути сьогодні:*",
         "footer": "_Напиши інше місто, щоб перевірити погоду там!_",
         "forecast_btn": "📅 Прогноз на 5 днів",
@@ -192,8 +198,6 @@ TEXTS = {
         "notif_disabled": "❌ Ранкові сповіщення *вимкнено*",
         "notif_no_city": "⚠️ Спочатку збережи своє місто! Натисни ⏰ Сповіщення",
         "morning_msg": "🌅 *Доброго ранку!* Ось погода на сьогодні:",
-        "sunrise": "🌅 Схід сонця",
-        "sunset": "🌇 Захід сонця",
         "currency_btn": "💱 Курс валют",
         "currency_title": "💱 *Курс валют до EUR:*",
         "currency_loading": "💱 Завантажую курс валют...",
@@ -239,7 +243,8 @@ TEXTS = {
             "1️⃣ Type a city name — get the weather\n"
             "2️⃣ Or tap 📍 and share your location\n"
             "3️⃣ Tap 📅 for 5-day forecast\n"
-            "4️⃣ Tap ⏰ to set up morning notifications\n\n"
+            "4️⃣ Tap ⏰ to set up morning notifications\n"
+            "5️⃣ Tap 💱 for exchange rates and crypto\n\n"
             "Commands:\n"
             "/start — Welcome\n"
             "/language — Change language\n"
@@ -269,6 +274,8 @@ TEXTS = {
         "wind": "💨 Wind",
         "air_quality": "🌿 Air Quality",
         "air_levels": ["Excellent", "Good", "Moderate", "Poor", "Very Poor"],
+        "sunrise": "🌅 Sunrise",
+        "sunset": "🌇 Sunset",
         "outfit_title": "👗 *What to wear today:*",
         "footer": "_Type another city to check the weather there!_",
         "forecast_btn": "📅 5-Day Forecast",
@@ -293,8 +300,6 @@ TEXTS = {
         "notif_disabled": "❌ Morning notifications *disabled*",
         "notif_no_city": "⚠️ Save your home city first! Tap ⏰ Notifications",
         "morning_msg": "🌅 *Good morning!* Here's today's weather:",
-        "sunrise": "🌅 Sunrise",
-        "sunset": "🌇 Sunset",
         "currency_btn": "💱 Exchange Rates",
         "currency_title": "💱 *Exchange Rates to EUR:*",
         "currency_loading": "💱 Loading exchange rates...",
@@ -339,7 +344,13 @@ NOTIF_CITY_BUTTONS = ["🏙️ Сменить город", "🏙️ Змінит
 NOTIF_TIME_BUTTONS = ["🕐 Сменить время", "🕐 Змінити час", "🕐 Change Time"]
 NOTIF_ENABLE_BUTTONS = ["✅ Включить", "✅ Увімкнути", "✅ Enable"]
 NOTIF_DISABLE_BUTTONS = ["❌ Выключить", "❌ Вимкнути", "❌ Disable"]
-BACK_BUTTONS = ["🔙 Назад", "🔙 Назад", "🔙 Back"]
+BACK_BUTTONS = ["🔙 Назад", "🔙 Back"]
+CURRENCY_BUTTONS = ["💱 Курс валют", "💱 Exchange Rates"]
+CURRENCIES = ["USD", "GBP", "UAH", "RUB", "PLN", "CHF", "JPY"]
+CURRENCY_FLAGS = {
+    "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
+    "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
+}
 
 
 def get_lang(user_id):
@@ -392,6 +403,16 @@ def get_forecast(city, lang):
     return None
 
 
+def get_exchange_rates():
+    try:
+        response = requests.get(CURRENCY_URL, timeout=5)
+        if response.status_code == 200:
+            return response.json().get("rates", {})
+    except Exception:
+        pass
+    return None
+
+
 def get_clothing_advice(temp, weather_desc, wind_speed, t):
     advice = []
     c = t["clothing"]
@@ -427,11 +448,11 @@ def format_weather_message(data, lang):
     wind_speed = data["wind"]["speed"]
     description = data["weather"][0]["description"].capitalize()
     icon = data["weather"][0]["icon"]
+    sunrise = datetime.fromtimestamp(data["sys"]["sunrise"]).strftime("%H:%M")
+    sunset = datetime.fromtimestamp(data["sys"]["sunset"]).strftime("%H:%M")
     sky_emojis = {"01": "☀️", "02": "🌤️", "03": "⛅", "04": "☁️",
                   "09": "🌧️", "10": "🌦️", "11": "⛈️", "13": "❄️", "50": "🌫️"}
     sky = sky_emojis.get(icon[:2], "🌡️")
-    sunrise = datetime.fromtimestamp(data["sys"]["sunrise"]).strftime("%H:%M")
-    sunset = datetime.fromtimestamp(data["sys"]["sunset"]).strftime("%H:%M")
     clothing = get_clothing_advice(data.get("temp_max", temp), description, wind_speed, t)
     aqi_text = get_aqi_label(data.get("aqi", 0), t)
     return (
@@ -639,33 +660,15 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(format_weather_message(data, lang), parse_mode="Markdown")
     else:
         await update.message.reply_text(t["location_error"])
-        
-CURRENCY_BUTTONS = ["💱 Курс валют", "💱 Exchange Rates"]
-CURRENCY_URL = "https://api.exchangerate-api.com/v4/latest/EUR"
-CURRENCIES = ["USD", "GBP", "UAH", "RUB", "PLN", "CHF", "JPY"]
-CURRENCY_FLAGS = {
-    "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
-    "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
-}
-BTC_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
-ETH_URL = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT"
 
 
-def get_exchange_rates():
-    try:
-        response = requests.get(CURRENCY_URL, timeout=5)
-        if response.status_code == 200:
-            return response.json().get("rates", {})
-    except Exception:
-        pass
-    return None
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text.strip()
     state = user_state.get(user_id, "choosing_city")
     app = context.application
 
-    # ── Language selection ──────────────────────────────
+    # Language selection
     if text in LANG_BUTTONS:
         if text == "🇺🇦 Українська":
             user_languages[user_id] = "uk"
@@ -693,7 +696,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(user_id)
     t = TEXTS[lang]
 
-    # ── Switch language ─────────────────────────────────
+    # Switch language
     if text in SWITCH_BUTTONS:
         user_state[user_id] = "choosing_lang"
         await update.message.reply_text(
@@ -702,32 +705,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ── Location button ─────────────────────────────────
+    # Location button
     if text in LOCATION_BUTTONS:
         await update.message.reply_text(t["location_instructions"], parse_mode="Markdown")
         return
 
-    # ── Forecast button ─────────────────────────────────
+    # Forecast button
     if text in FORECAST_BUTTONS:
         user_state[user_id] = "choosing_forecast_city"
         await update.message.reply_text(t["forecast_ask"], parse_mode="Markdown")
         return
 
-    # ── Notifications menu ──────────────────────────────
+    # Currency button
+    if text in CURRENCY_BUTTONS:
+        await update.message.reply_text(t["currency_loading"])
+        rates = get_exchange_rates()
+        if not rates:
+            await update.message.reply_text(t["currency_error"])
+            return
+        msg = t["currency_title"] + "\n━━━━━━━━━━━━━━━━━━\n"
+        msg += "🇪🇺 1 EUR =\n\n"
+        for code in CURRENCIES:
+            if code in rates:
+                flag = CURRENCY_FLAGS.get(code, "")
+                rate = rates[code]
+                if rate >= 100:
+                    msg += f"{flag} {code}: *{rate:.2f}*\n"
+                else:
+                    msg += f"{flag} {code}: *{rate:.4f}*\n"
+        try:
+            btc = float(requests.get(BTC_URL, timeout=5).json()["price"])
+            eth = float(requests.get(ETH_URL, timeout=5).json()["price"])
+            msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
+            msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
+        except Exception:
+            pass
+        msg += "━━━━━━━━━━━━━━━━━━"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        return
+
+    # Notifications menu
     if text in NOTIF_BUTTONS:
         user_state[user_id] = "notif_menu"
         msg, keyboard = show_notif_menu(user_id, t)
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboard)
         return
 
-    # ── Back button ─────────────────────────────────────
+    # Back button
     if text in BACK_BUTTONS:
         user_state[user_id] = "choosing_city"
         reply_markup = ReplyKeyboardMarkup(t["keyboard"], resize_keyboard=True)
         await update.message.reply_text(t["welcome"], parse_mode="Markdown", reply_markup=reply_markup)
         return
 
-    # ── Notification sub-menu buttons ───────────────────
+    # Notification sub-menu
     if text in NOTIF_CITY_BUTTONS:
         user_state[user_id] = "notif_set_city"
         await update.message.reply_text(t["notif_set_city"], parse_mode="Markdown")
@@ -750,10 +781,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_notif_on[user_id] = True
         schedule_notification(app, user_id, time_str)
-        await update.message.reply_text(
-            t["notif_enabled"].format(time_str, city),
-            parse_mode="Markdown"
-        )
+        await update.message.reply_text(t["notif_enabled"].format(time_str, city), parse_mode="Markdown")
         return
 
     if text in NOTIF_DISABLE_BUTTONS:
@@ -762,7 +790,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t["notif_disabled"], parse_mode="Markdown")
         return
 
-    # ── Notification city input ─────────────────────────
+    # Notification city input
     if state == "notif_set_city":
         weather_check = get_weather(text, t["api_lang"])
         if weather_check:
@@ -775,7 +803,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(t["not_found"].format(text), parse_mode="Markdown")
         return
 
-    # ── Notification time input ─────────────────────────
+    # Notification time input
     if state == "notif_set_time":
         try:
             parts = text.strip().split(":")
@@ -795,36 +823,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except ValueError:
             await update.message.reply_text(t["notif_time_invalid"], parse_mode="Markdown")
         return
-        
-    # ── Currency button ─────────────────────────────────
-if text in CURRENCY_BUTTONS:
-        await update.message.reply_text(t["currency_loading"])
-        rates = get_exchange_rates()
-        if not rates:
-            await update.message.reply_text(t["currency_error"])
-            return
-        msg = t["currency_title"] + "\n━━━━━━━━━━━━━━━━━━\n"
-        msg += f"🇪🇺 1 EUR =\n\n"
-        for code in CURRENCIES:
-            if code in rates:
-                flag = CURRENCY_FLAGS.get(code, "")
-                rate = rates[code]
-                if rate >= 100:
-                    msg += f"{flag} {code}: *{rate:.2f}*\n"
-                else:
-                    msg += f"{flag} {code}: *{rate:.4f}*\n"
-        try:
-            btc = float(requests.get(BTC_URL, timeout=5).json()["price"])
-            eth = float(requests.get(ETH_URL, timeout=5).json()["price"])
-            msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
-            msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
-            msg += "━━━━━━━━━━━━━━━━━━"
-        except Exception:
-            pass
-        await update.message.reply_text(msg, parse_mode="Markdown")
-        return
-    
-    # ── City search or forecast ─────────────────────────
+
+    # City search or forecast
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
 
     if user_state.get(user_id) == "choosing_forecast_city":
