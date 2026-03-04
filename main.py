@@ -647,21 +647,18 @@ CURRENCY_FLAGS = {
     "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
     "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
 }
-
 BTC_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
 ETH_URL = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT"
 
 
 def get_exchange_rates():
-try:
-            btc = float(requests.get(BTC_URL, timeout=5).json()["price"])
-            eth = float(requests.get(ETH_URL, timeout=5).json()["price"])
-            msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
-            msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
-            msg += "━━━━━━━━━━━━━━━━━━"
-        except Exception:
-            pass
-
+    try:
+        response = requests.get(CURRENCY_URL, timeout=5)
+        if response.status_code == 200:
+            return response.json().get("rates", {})
+    except Exception:
+        pass
+    return None
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text.strip()
@@ -800,7 +797,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     # ── Currency button ─────────────────────────────────
-    if text in CURRENCY_BUTTONS:
+if text in CURRENCY_BUTTONS:
         await update.message.reply_text(t["currency_loading"])
         rates = get_exchange_rates()
         if not rates:
@@ -816,17 +813,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     msg += f"{flag} {code}: *{rate:.2f}*\n"
                 else:
                     msg += f"{flag} {code}: *{rate:.4f}*\n"
-                    
-    # Crypto rates
         try:
-            crypto_resp = requests.get(CRYPTO_URL, timeout=5)
-            if crypto_resp.status_code == 200:
-                crypto = crypto_resp.json()
-                btc = crypto["bitcoin"]["usd"]
-                eth = crypto["ethereum"]["usd"]
-                msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
-                msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
-                msg += "━━━━━━━━━━━━━━━━━━"
+            btc = float(requests.get(BTC_URL, timeout=5).json()["price"])
+            eth = float(requests.get(ETH_URL, timeout=5).json()["price"])
+            msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
+            msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
+            msg += "━━━━━━━━━━━━━━━━━━"
         except Exception:
             pass
         await update.message.reply_text(msg, parse_mode="Markdown")
