@@ -647,17 +647,20 @@ CURRENCY_FLAGS = {
     "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
     "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
 }
-CRYPTO_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+
+BTC_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+ETH_URL = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT"
 
 
 def get_exchange_rates():
-    try:
-        response = requests.get(CURRENCY_URL, timeout=5)
-        if response.status_code == 200:
-            return response.json().get("rates", {})
-    except Exception:
-        pass
-    return None
+try:
+            btc = float(requests.get(BTC_URL, timeout=5).json()["price"])
+            eth = float(requests.get(ETH_URL, timeout=5).json()["price"])
+            msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
+            msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
+            msg += "━━━━━━━━━━━━━━━━━━"
+        except Exception:
+            pass
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
