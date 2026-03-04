@@ -647,6 +647,7 @@ CURRENCY_FLAGS = {
     "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
     "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
 }
+CRYPTO_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
 
 
 def get_exchange_rates():
@@ -812,10 +813,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     msg += f"{flag} {code}: *{rate:.2f}*\n"
                 else:
                     msg += f"{flag} {code}: *{rate:.4f}*\n"
-        msg += "━━━━━━━━━━━━━━━━━━"
+                    
+    # Crypto rates
+        try:
+            crypto_resp = requests.get(CRYPTO_URL, timeout=5)
+            if crypto_resp.status_code == 200:
+                crypto = crypto_resp.json()
+                btc = crypto["bitcoin"]["usd"]
+                eth = crypto["ethereum"]["usd"]
+                msg += f"\n₿ BTC: *${btc:,.0f} USDT*\n"
+                msg += f"⟠ ETH: *${eth:,.0f} USDT*\n"
+                msg += "━━━━━━━━━━━━━━━━━━"
+        except Exception:
+            pass
         await update.message.reply_text(msg, parse_mode="Markdown")
         return
-        
+    
     # ── City search or forecast ─────────────────────────
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
 
