@@ -92,8 +92,12 @@ TEXTS = {
         "morning_msg": "🌅 *Доброе утро!* Вот погода на сегодня:",
         "sunrise": "🌅 Восход",
         "sunset": "🌇 Закат",
+        "currency_btn": "💱 Курс валют",
+        "currency_title": "💱 *Курс валют к EUR:*",
+        "currency_loading": "💱 Загружаю курс валют...",
+        "currency_error": "❌ Не удалось загрузить курс валют. Попробуй позже.",
         "api_lang": "ru",
-        "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"], ["📅 Прогноз на 5 дней", "⏰ Уведомления"]],
+        "keyboard": [["📍 Моё местоположение", "🌐 Сменить язык"], ["📅 Прогноз на 5 дней", "⏰ Уведомления"], ["💱 Курс валют"]],
         "notif_keyboard": [["🏙️ Сменить город", "🕐 Сменить время"], ["✅ Включить", "❌ Выключить"], ["🔙 Назад"]],
         "clothing": {
             "very_cold_1": "🧥 Тёплое зимнее пальто, термобельё, шерстяной свитер",
@@ -190,8 +194,12 @@ TEXTS = {
         "morning_msg": "🌅 *Доброго ранку!* Ось погода на сьогодні:",
         "sunrise": "🌅 Схід сонця",
         "sunset": "🌇 Захід сонця",
+        "currency_btn": "💱 Курс валют",
+        "currency_title": "💱 *Курс валют до EUR:*",
+        "currency_loading": "💱 Завантажую курс валют...",
+        "currency_error": "❌ Не вдалося завантажити курс валют. Спробуй пізніше.",
         "api_lang": "uk",
-        "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"], ["📅 Прогноз на 5 днів", "⏰ Сповіщення"]],
+        "keyboard": [["📍 Моє місцезнаходження", "🌐 Змінити мову"], ["📅 Прогноз на 5 днів", "⏰ Сповіщення"], ["💱 Курс валют"]],
         "notif_keyboard": [["🏙️ Змінити місто", "🕐 Змінити час"], ["✅ Увімкнути", "❌ Вимкнути"], ["🔙 Назад"]],
         "clothing": {
             "very_cold_1": "🧥 Тепле зимове пальто, термобілизна, вовняний светр",
@@ -287,8 +295,12 @@ TEXTS = {
         "morning_msg": "🌅 *Good morning!* Here's today's weather:",
         "sunrise": "🌅 Sunrise",
         "sunset": "🌇 Sunset",
+        "currency_btn": "💱 Exchange Rates",
+        "currency_title": "💱 *Exchange Rates to EUR:*",
+        "currency_loading": "💱 Loading exchange rates...",
+        "currency_error": "❌ Couldn't load exchange rates. Try again later.",
         "api_lang": "en",
-        "keyboard": [["📍 My Location", "🌐 Change Language"], ["📅 5-Day Forecast", "⏰ Notifications"]],
+        "keyboard": [["📍 My Location", "🌐 Change Language"], ["📅 5-Day Forecast", "⏰ Notifications"], ["💱 Exchange Rates"]],
         "notif_keyboard": [["🏙️ Change City", "🕐 Change Time"], ["✅ Enable", "❌ Disable"], ["🔙 Back"]],
         "clothing": {
             "very_cold_1": "🧥 Heavy winter coat, thermal underwear, wool sweater",
@@ -627,7 +639,24 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(format_weather_message(data, lang), parse_mode="Markdown")
     else:
         await update.message.reply_text(t["location_error"])
+        
+CURRENCY_BUTTONS = ["💱 Курс валют", "💱 Exchange Rates"]
+CURRENCY_URL = "https://api.exchangerate-api.com/v4/latest/EUR"
+CURRENCIES = ["USD", "GBP", "UAH", "RUB", "PLN", "CHF", "JPY"]
+CURRENCY_FLAGS = {
+    "USD": "🇺🇸", "GBP": "🇬🇧", "UAH": "🇺🇦",
+    "RUB": "🇷🇺", "PLN": "🇵🇱", "CHF": "🇨🇭", "JPY": "🇯🇵"
+}
 
+
+def get_exchange_rates():
+    try:
+        response = requests.get(CURRENCY_URL, timeout=5)
+        if response.status_code == 200:
+            return response.json().get("rates", {})
+    except Exception:
+        pass
+    return None
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -765,7 +794,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except ValueError:
             await update.message.reply_text(t["notif_time_invalid"], parse_mode="Markdown")
         return
-
+        
+    # ── Currency button ─────────────────────────────────
+    if text in CURRENCY_BUTTONS:
+        await update.message.reply_text(t["currency_loading"])
+        rates = get_exchange_rates()
+        if not rates:
+            await update.message.reply_text(t["currency_error"])
+            return
+        msg = t["currency_title"] + "\n━━━━━━━━━━━━━━━━━━\n"
+        msg += f"🇪🇺 1 EUR =\n\n"
+        for code in CURRENCIES:
+            if code in rates:
+                flag = CURRENCY_FLAGS.get(code, "")
+                rate = rates[code]
+                if rate >= 100:
+                    msg += f"{flag} {code}: *{rate:.2f}*\n"
+                else:
+                    msg += f"{flag} {code}: *{rate:.4f}*\n"
+        msg += "━━━━━━━━━━━━━━━━━━"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        return
+        
     # ── City search or forecast ─────────────────────────
     await update.message.reply_text(t["searching"].format(text), parse_mode="Markdown")
 
